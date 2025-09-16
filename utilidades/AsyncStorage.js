@@ -37,3 +37,15 @@ export const limpiarExperiencias = async () => {
     return false;
   }
 };
+
+export const eliminarExperiencia = async (id) => {
+  try {
+    const experiencias = await obtenerExperiencias();
+    const nuevasExperiencias = experiencias.filter(exp => exp.id !== id);
+    await AsyncStorage.setItem(CLAVE_EXPERIENCIAS, JSON.stringify(nuevasExperiencias));
+    return true;
+  } catch (error) {
+    console.error('Error al eliminar experiencia:', error);
+    return false;
+  }
+};

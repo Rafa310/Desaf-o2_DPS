@@ -3,22 +3,41 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import FormularioExperiencia from './componentes/FormularioExperiencia';
-// Elimina: import { View, Text } from 'react-native'; (ya no lo necesitas)
+import { Ionicons } from '@expo/vector-icons';
+import ProfileScreen from './pantallas/ProfileScreen';
+
+// Importamos nuestras pantallas
 import HomeScreen from './pantallas/HomeScreen';
 import ExperiencesScreen from './pantallas/ExperiencesScreen';
 import MapScreen from './pantallas/MapScreen';
 import SettingsScreen from './pantallas/SettingsScreen';
+import FormularioExperiencia from './componentes/FormularioExperiencia';
 
-// 1. Crear los navegadores
+// Crear los navegadores
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// 2. Configurar el Bottom Tab Navigator
+
+// Configurar el Bottom Tab Navigator con ÍCONOS
 function TabNavigator() {
   return (
-    <Tab.Navigator>
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ color, size }) => {
+          let iconName;
+
+          if (route.name === 'Inicio') iconName = 'home';
+          else if (route.name === 'Experiencias') iconName = 'list';
+          else if (route.name === 'Mapa') iconName = 'map';
+          else if (route.name === 'Configuración') iconName = 'settings';
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#2e8b57',
+        tabBarInactiveTintColor: 'gray',
+      })}
+    >
       <Tab.Screen name="Inicio" component={HomeScreen} />
       <Tab.Screen name="Experiencias" component={ExperiencesScreen} />
       <Tab.Screen name="Mapa" component={MapScreen} />
@@ -27,7 +46,7 @@ function TabNavigator() {
   );
 }
 
-// 3. Configurar el Stack Navigator
+// Configurar el Stack Navigator
 function StackNavigator() {
   return (
     <Stack.Navigator>
@@ -45,7 +64,7 @@ function StackNavigator() {
   );
 }
 
-// 4. App Principal con Drawer Navigation
+// App Principal con Drawer Navigation
 export default function App() {
   return (
     <NavigationContainer>
@@ -55,9 +74,11 @@ export default function App() {
           component={StackNavigator} 
           options={{ title: 'Inicio' }} 
         />
-        <Drawer.Screen name="Mi Perfil" component={SettingsScreen} />
+        
+        <Drawer.Screen name="Mi Perfil" component={ProfileScreen} />
         <Drawer.Screen name="Cerrar Sesión" component={SettingsScreen} />
       </Drawer.Navigator>
     </NavigationContainer>
   );
 }
+
