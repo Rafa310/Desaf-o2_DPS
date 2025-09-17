@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
+import * as Location from 'expo-location';
 import { guardarExperiencia } from '../utilidades/AsyncStorage';
 
 export default function FormularioExperiencia({ navigation }) {
   const [nota, setNota] = useState('');
   const [foto, setFoto] = useState(null);
+  const [ubicacion, setUbicacion] = useState(null);
+  const [grabando, setGrabando] = useState(false);
+  const [audioUri, setAudioUri] = useState(null);
+  const grabacionRef = useRef(null);
 
   const tomarFoto = async () => {
     try {
@@ -29,6 +35,61 @@ export default function FormularioExperiencia({ navigation }) {
     }
   };
 
+  const obtenerUbicacion = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso de ubicación denegado');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setUbicacion({
+        latitud: location.coords.latitude,
+        longitud: location.coords.longitude
+      });
+      Alert.alert('Ubicación guardada', '¡Tu ubicación se ha agregado!');
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo obtener la ubicación');
+    }
+  };
+
+  const iniciarGrabacion = async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso de micrófono denegado');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      
+      grabacionRef.current = recording;
+      setGrabando(true);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo iniciar la grabación');
+    }
+  };
+
+  const detenerGrabacion = async () => {
+    try {
+      setGrabando(false);
+      await grabacionRef.current.stopAndUnloadAsync();
+      const uri = grabacionRef.current.getURI();
+      setAudioUri(uri);
+      grabacionRef.current = null;
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo detener la grabación');
+    }
+  };
+
   const handleGuardarExperiencia = async () => {
     if (!nota.trim()) {
       Alert.alert('Error', 'Por favor escribe una nota');
@@ -39,9 +100,9 @@ export default function FormularioExperiencia({ navigation }) {
       id: Date.now().toString(),
       fecha: new Date().toLocaleString(),
       nota: nota.trim(),
-      foto: foto, // ← Ahora sí guarda la foto
-      audio: null, // Por ahora null, luego agregaremos audio
-      ubicacion: null // Por ahora null, luego agregaremos GPS
+      foto: foto,
+      audio: audioUri,
+      ubicacion: ubicacion
     };
 
     const exito = await guardarExperiencia(nuevaExperiencia);
@@ -50,6 +111,8 @@ export default function FormularioExperiencia({ navigation }) {
       Alert.alert('Éxito', 'Experiencia guardada correctamente');
       setNota('');
       setFoto(null);
+      setUbicacion(null);
+      setAudioUri(null);
       navigation.goBack();
     } else {
       Alert.alert('Error', 'No se pudo guardar la experiencia');
@@ -69,7 +132,6 @@ export default function FormularioExperiencia({ navigation }) {
         numberOfLines={4}
       />
 
-      {/* SECCIÓN MULTIMEDIA - CÁMARA */}
       <View style={styles.seccionMultimedia}>
         <Text style={styles.subtitulo}>Multimedia:</Text>
         
@@ -77,20 +139,39 @@ export default function FormularioExperiencia({ navigation }) {
           <Text style={styles.textoBotonMultimedia}>📸 Tomar Foto</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.botonMultimedia} onPress={obtenerUbicacion}>
+          <Text style={styles.textoBotonMultimedia}>📍 Obtener Ubicación</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.botonMultimedia, grabando && styles.botonGrabando]}
+          onPress={grabando ? detenerGrabacion : iniciarGrabacion}
+        >
+          <Text style={styles.textoBotonMultimedia}>
+            {grabando ? '⏹️ Detener Grabación' : '🎤 Grabar Audio'}
+          </Text>
+        </TouchableOpacity>
+
         {foto && (
           <Image source={{ uri: foto }} style={styles.vistaPreviaFoto} />
         )}
-      </View>
 
-      <Text style={styles.textoAyuda}>
-        Próximamente: podrás agregar audio y ubicación
-      </Text>
+        {ubicacion && (
+          <Text style={styles.textoUbicacion}>
+            📍 Ubicación: {ubicacion.latitud.toFixed(4)}, {ubicacion.longitud.toFixed(4)}
+          </Text>
+        )}
+
+        {audioUri && (
+          <Text style={styles.textoAudio}>🎵 Audio grabado</Text>
+        )}
+      </View>
 
       <TouchableOpacity 
         style={styles.botonGuardar}
         onPress={handleGuardarExperiencia}
       >
-        <Text style={styles.textoBoton}>Guardar Experiencia</Text>
+        <Text style={styles.textoBoton}>💾 Guardar Experiencia</Text>
       </TouchableOpacity>
     </View>
   );
@@ -135,6 +216,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  botonGrabando: {
+    backgroundColor: '#ff4444',
+  },
   textoBotonMultimedia: {
     color: 'white',
     fontWeight: 'bold',
@@ -146,11 +230,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignSelf: 'center',
   },
-  textoAyuda: {
-    color: '#666',
-    fontStyle: 'italic',
-    marginBottom: 30,
+  textoUbicacion: {
+    color: '#2e8b57',
+    fontSize: 12,
+    marginTop: 10,
     textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  textoAudio: {
+    color: '#2e8b57',
+    fontSize: 12,
+    marginTop: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   botonGuardar: {
     backgroundColor: '#2e8b57',

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { useTheme } from '../App.js';
 
 export default function MapScreen() {
   const [ubicacion, setUbicacion] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const theme = useTheme();
 
   useEffect(() => {
     (async () => {
@@ -21,11 +23,11 @@ export default function MapScreen() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>Mapa de Experiencias</Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <Text style={[styles.titulo, { color: theme.colors.text }]}>Mapa de Experiencias</Text>
       
       {errorMsg ? (
-        <Text style={styles.error}>{errorMsg}</Text>
+        <Text style={[styles.error, { color: '#ff6b6b' }]}>{errorMsg}</Text>
       ) : ubicacion ? (
         <MapView
           style={styles.mapa}
@@ -43,10 +45,11 @@ export default function MapScreen() {
             }}
             title="Tu ubicación"
             description="Estás aquí"
+            pinColor={theme.colors.primary} //Marker con color del tema
           />
         </MapView>
       ) : (
-        <Text style={styles.cargando}>Cargando mapa...</Text>
+        <Text style={[styles.cargando, { color: theme.colors.text }]}>Cargando mapa...</Text>
       )}
     </View>
   );
@@ -56,12 +59,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f0f8f0',
   },
   titulo: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2e8b57',
     marginBottom: 15,
     textAlign: 'center',
   },
@@ -71,13 +72,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   error: {
-    color: 'red',
     textAlign: 'center',
     marginTop: 20,
+    fontSize: 16,
   },
   cargando: {
     textAlign: 'center',
     marginTop: 20,
-    color: '#666',
+    fontSize: 16,
   },
 });
